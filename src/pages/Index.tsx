@@ -66,6 +66,8 @@ const Index = () => {
       <ChatInterface
         characterName={selectedCharacter.name}
         characterAvatar={selectedCharacter.avatar}
+        characterDescription={selectedCharacter.description}
+        characterPersonality={selectedCharacter.personality}
         onBack={() => setCurrentView('list')}
       />
     );

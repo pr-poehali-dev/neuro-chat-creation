@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "name": "Chat with character",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "message": "Привет!",
+        "characterName": "Алиса",
+        "characterPersonality": "Дружелюбная и веселая AI-ассистент",
+        "conversationHistory": []
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "response": "string",
+        "characterName": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

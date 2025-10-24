@@ -17,10 +17,12 @@ interface Message {
 interface ChatInterfaceProps {
   characterName: string;
   characterAvatar: string;
+  characterDescription: string;
+  characterPersonality: string;
   onBack: () => void;
 }
 
-export const ChatInterface = ({ characterName, characterAvatar, onBack }: ChatInterfaceProps) => {
+export const ChatInterface = ({ characterName, characterAvatar, characterDescription, characterPersonality, onBack }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -31,6 +33,7 @@ export const ChatInterface = ({ characterName, characterAvatar, onBack }: ChatIn
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
@@ -43,20 +46,82 @@ export const ChatInterface = ({ characterName, characterAvatar, onBack }: ChatIn
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputValue;
     setInputValue('');
     setIsGenerating(true);
 
-    setTimeout(() => {
+    try {
+      const chatResponse = await fetch('https://functions.poehali.dev/52c33daa-84b4-4d76-8cbe-4d94c743b416', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          characterName,
+          characterPersonality,
+          conversationHistory: messages
+        })
+      });
+
+      if (!chatResponse.ok) {
+        throw new Error('Failed to get character response');
+      }
+
+      const chatData = await chatResponse.json();
+      const characterResponse = chatData.response;
+
       const characterMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         sender: 'character',
-        text: 'Интересно! Позвольте мне продумать это...',
-        image: 'https://cdn.poehali.dev/projects/a27e76b2-f352-4aaa-91c6-3b0908630d8f/files/0c006031-35eb-4590-868e-3a368df4a7d8.jpg',
+        text: characterResponse,
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, characterMessage]);
       setIsGenerating(false);
-    }, 1500);
+      setIsGeneratingImage(true);
+
+      const imageResponse = await fetch('https://functions.poehali.dev/310c1dfc-bf3a-4f98-8bcb-b71b013f9e77', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterResponse,
+          characterName,
+          characterDescription
+        })
+      });
+
+      if (imageResponse.ok) {
+        const imageData = await imageResponse.json();
+        
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === characterMessage.id 
+              ? { ...msg, image: imageData.imageUrl }
+              : msg
+          )
+        );
+      }
+      
+      setIsGeneratingImage(false);
+
+    } catch (error) {
+      console.error('Error:', error);
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        sender: 'character',
+        text: 'Извините, произошла ошибка. Пожалуйста, проверьте настройки API или попробуйте позже.',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      setIsGenerating(false);
+      setIsGeneratingImage(false);
+    }
   };
 
   return (
@@ -127,6 +192,17 @@ export const ChatInterface = ({ characterName, characterAvatar, onBack }: ChatIn
               </Card>
             </div>
           )}
+          {isGeneratingImage && (
+            <div className="flex gap-3 animate-fade-in">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={characterAvatar} alt={characterName} />
+                <AvatarFallback>{characterName[0]}</AvatarFallback>
+              </Avatar>
+              <Card className="p-4 bg-card">
+                <p className="text-sm text-muted-foreground">Создаю изображение...</p>
+              </Card>
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -137,9 +213,9 @@ export const ChatInterface = ({ characterName, characterAvatar, onBack }: ChatIn
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Напишите сообщение..."
-            disabled={isGenerating}
+            disabled={isGenerating || isGeneratingImage}
           />
-          <Button onClick={handleSend} disabled={isGenerating || !inputValue.trim()}>
+          <Button onClick={handleSend} disabled={isGenerating || isGeneratingImage || !inputValue.trim()}>
             <Icon name="Send" size={18} />
           </Button>
         </div>

@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Generate character scene image",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "characterResponse": "Я думаю о будущем технологий",
+        "characterName": "Алиса",
+        "characterDescription": "AI-ассистент с голубыми волосами"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "imageUrl": "string",
+        "characterName": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
